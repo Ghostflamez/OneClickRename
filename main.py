@@ -10,6 +10,8 @@ from pathlib import Path
 import engine
 import history
 
+__version__ = "1.0.0"
+
 # DPI awareness for Windows 10/11
 try:
     ctypes.windll.shcore.SetProcessDpiAwareness(1)
@@ -23,7 +25,7 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
 
-        self.title("Batch File Renamer")
+        self.title(f"OneClickRename v{__version__}")
         self.geometry("900x650")
         self.minsize(700, 500)
 
@@ -515,7 +517,7 @@ class App(tk.Tk):
             self.files.sort(key=lambda f: f.name.lower())
             self.checked_items.clear()
             self._update_preview()
-            self.title(f"Batch File Renamer - {self.current_folder}")
+            self.title(f"OneClickRename v{__version__} - {self.current_folder}")
 
     def _on_undo(self):
         """Undo last rename operation."""
