@@ -43,11 +43,12 @@ class App(tk.Tk):
         self.history = history.History()
         self._preview_job: str | None = None
 
-        # Build UI
+        # Build UI (order matters for pack layout)
         self._create_toolbar()
         self._create_filter_bar()
-        self._create_preview_pane()
+        self._create_action_bar()  # Pack bottom first
         self._create_rules_panel()
+        self._create_preview_pane()  # Expands to fill remaining space
 
         # Update button states
         self._update_button_states()
@@ -66,29 +67,169 @@ class App(tk.Tk):
         self.btn_redo = ttk.Button(toolbar, text="Redo", command=self._on_redo)
         self.btn_redo.pack(side=tk.LEFT, padx=2)
 
-        self.btn_apply = ttk.Button(toolbar, text="Apply", command=self._on_apply)
-        self.btn_apply.pack(side=tk.LEFT, padx=2)
-
         self.btn_clear = ttk.Button(toolbar, text="Clear", command=self._on_clear)
         self.btn_clear.pack(side=tk.LEFT, padx=2)
 
     def _create_filter_bar(self):
-        """Create the file type filter bar."""
+        """Create the file type filter bar with checkbox dropdown."""
         filter_frame = ttk.Frame(self)
         filter_frame.pack(fill=tk.X, padx=5, pady=2)
 
         ttk.Label(filter_frame, text="Filter:").pack(side=tk.LEFT, padx=2)
 
-        self.filter_var = tk.StringVar()
-        self.filter_var.trace_add("write", lambda *_: self._schedule_preview())
-        self.filter_entry = ttk.Entry(filter_frame, textvariable=self.filter_var, width=20)
-        self.filter_entry.pack(side=tk.LEFT, padx=2)
+        # Common file extensions
+        self.filter_extensions = [
+            ".txt", ".doc", ".docx", ".pdf",
+            ".jpg", ".jpeg", ".png", ".gif", ".bmp",
+            ".mp3", ".mp4", ".avi", ".mkv",
+            ".zip", ".rar", ".7z",
+            ".py", ".js", ".html", ".css", ".json"
+        ]
+
+        # Track selected extensions
+        self.filter_vars: dict[str, tk.BooleanVar] = {}
+        for ext in self.filter_extensions:
+            self.filter_vars[ext] = tk.BooleanVar(value=False)
+
+        # Custom extensions added by user
+        self.custom_extensions: list[str] = []
+
+        # Display label showing selected filters
+        self.filter_display_var = tk.StringVar(value="All Files")
+        self.filter_display = ttk.Label(filter_frame, textvariable=self.filter_display_var, width=30, anchor=tk.W)
+        self.filter_display.pack(side=tk.LEFT, padx=2)
+
+        # Dropdown button
+        self.filter_btn = ttk.Menubutton(filter_frame, text="Select...")
+        self.filter_menu = tk.Menu(self.filter_btn, tearoff=0)
+        self.filter_btn["menu"] = self.filter_menu
+        self.filter_btn.pack(side=tk.LEFT, padx=2)
+
+        # Build menu with checkboxes
+        self._build_filter_menu()
 
         ttk.Label(
             filter_frame,
-            text="(e.g., *.txt, *.jpg) | Multi-select: Ctrl+Click, Shift+Click",
+            text="| Multi-select: Ctrl+Click, Shift+Click",
             foreground="gray"
         ).pack(side=tk.LEFT, padx=10)
+
+    def _build_filter_menu(self):
+        """Build the filter dropdown menu with checkboxes."""
+        self.filter_menu.delete(0, tk.END)
+
+        # Group by category
+        categories = {
+            "Documents": [".txt", ".doc", ".docx", ".pdf"],
+            "Images": [".jpg", ".jpeg", ".png", ".gif", ".bmp"],
+            "Media": [".mp3", ".mp4", ".avi", ".mkv"],
+            "Archives": [".zip", ".rar", ".7z"],
+            "Code": [".py", ".js", ".html", ".css", ".json"],
+        }
+
+        for category, exts in categories.items():
+            submenu = tk.Menu(self.filter_menu, tearoff=0)
+            for ext in exts:
+                submenu.add_checkbutton(
+                    label=ext,
+                    variable=self.filter_vars[ext],
+                    command=self._on_filter_change
+                )
+            self.filter_menu.add_cascade(label=category, menu=submenu)
+
+        # Custom extensions submenu
+        if self.custom_extensions:
+            self.filter_menu.add_separator()
+            custom_menu = tk.Menu(self.filter_menu, tearoff=0)
+            for ext in self.custom_extensions:
+                custom_menu.add_checkbutton(
+                    label=ext,
+                    variable=self.filter_vars[ext],
+                    command=self._on_filter_change
+                )
+            self.filter_menu.add_cascade(label="Custom", menu=custom_menu)
+
+        # Other option
+        self.filter_menu.add_separator()
+        self.filter_menu.add_command(label="Other...", command=self._on_filter_other)
+
+        # Clear all
+        self.filter_menu.add_separator()
+        self.filter_menu.add_command(label="Clear All", command=self._on_filter_clear)
+
+    def _on_filter_change(self):
+        """Handle filter checkbox change."""
+        selected = [ext for ext, var in self.filter_vars.items() if var.get()]
+        if selected:
+            if len(selected) <= 3:
+                self.filter_display_var.set(", ".join(selected))
+            else:
+                self.filter_display_var.set(f"{len(selected)} types selected")
+        else:
+            self.filter_display_var.set("All Files")
+        self._schedule_preview()
+
+    def _on_filter_other(self):
+        """Show dialog to add custom extension."""
+        dialog = tk.Toplevel(self)
+        dialog.title("Add Extension")
+        dialog.geometry("300x120")
+        dialog.resizable(False, False)
+        dialog.transient(self)
+        dialog.grab_set()
+
+        # Center on parent
+        dialog.geometry(f"+{self.winfo_x() + 300}+{self.winfo_y() + 200}")
+
+        ttk.Label(dialog, text="Enter file extension:").pack(pady=(15, 5))
+
+        entry_frame = ttk.Frame(dialog)
+        entry_frame.pack(pady=5)
+
+        # Fixed dot prefix
+        ttk.Label(entry_frame, text=".", font=("Segoe UI", 10, "bold")).pack(side=tk.LEFT)
+
+        ext_var = tk.StringVar()
+        ext_entry = ttk.Entry(entry_frame, textvariable=ext_var, width=15)
+        ext_entry.pack(side=tk.LEFT)
+        ext_entry.focus()
+
+        error_var = tk.StringVar()
+        error_label = ttk.Label(dialog, textvariable=error_var, foreground="red")
+        error_label.pack()
+
+        def validate_and_add():
+            ext = ext_var.get().strip().lower()
+            if not ext:
+                error_var.set("Extension cannot be empty")
+                return
+            if not ext.isalnum():
+                error_var.set("Only letters and numbers allowed")
+                return
+            full_ext = f".{ext}"
+            if full_ext in self.filter_vars:
+                error_var.set("Extension already exists")
+                return
+
+            # Add custom extension
+            self.custom_extensions.append(full_ext)
+            self.filter_vars[full_ext] = tk.BooleanVar(value=True)
+            self._build_filter_menu()
+            self._on_filter_change()
+            dialog.destroy()
+
+        btn_frame = ttk.Frame(dialog)
+        btn_frame.pack(pady=10)
+        ttk.Button(btn_frame, text="Add", command=validate_and_add).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Cancel", command=dialog.destroy).pack(side=tk.LEFT, padx=5)
+
+        ext_entry.bind("<Return>", lambda e: validate_and_add())
+
+    def _on_filter_clear(self):
+        """Clear all filter selections."""
+        for var in self.filter_vars.values():
+            var.set(False)
+        self._on_filter_change()
 
     def _create_preview_pane(self):
         """Create the file preview treeview."""
@@ -131,7 +272,7 @@ class App(tk.Tk):
     def _create_rules_panel(self):
         """Create the bottom rules notebook."""
         self.notebook = ttk.Notebook(self)
-        self.notebook.pack(fill=tk.X, padx=5, pady=5)
+        self.notebook.pack(side=tk.BOTTOM, fill=tk.X, padx=5, pady=5)
 
         # Prefix/Suffix tab
         prefix_frame = ttk.Frame(self.notebook, padding=10)
@@ -262,6 +403,22 @@ class App(tk.Tk):
         self.regex_replace_var.trace_add("write", lambda *_: self._schedule_preview())
         ttk.Entry(row1, textvariable=self.regex_replace_var, width=30).pack(side=tk.LEFT, padx=5)
 
+    def _create_action_bar(self):
+        """Create the bottom action bar with Apply button."""
+        action_frame = ttk.Frame(self)
+        action_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=5, pady=10)
+
+        # Configure style for larger button
+        self.style.configure("Apply.TButton", font=("Segoe UI", 12, "bold"), padding=(20, 10))
+
+        self.btn_apply = ttk.Button(
+            action_frame,
+            text="Apply Rename",
+            command=self._on_apply,
+            style="Apply.TButton"
+        )
+        self.btn_apply.pack(side=tk.RIGHT, padx=10)
+
     def _get_rules(self) -> dict:
         """Collect current rules from UI."""
         return {
@@ -294,9 +451,8 @@ class App(tk.Tk):
         if not self.files:
             return
 
-        # Filter files
-        filter_pattern = self.filter_var.get().strip()
-        filtered_files = self._filter_files(filter_pattern)
+        # Filter files by selected extensions
+        filtered_files = self._filter_files()
 
         # Handle numbering mode
         if self.use_numbering_var.get():
@@ -322,21 +478,13 @@ class App(tk.Tk):
                 check = "✓" if str(file_path) in self.checked_items else ""
                 self.tree.insert("", tk.END, iid=str(file_path), values=(check, old_name, new_name), tags=(tag,))
 
-    def _filter_files(self, pattern: str) -> list[Path]:
-        """Filter files based on pattern."""
-        if not pattern:
+    def _filter_files(self) -> list[Path]:
+        """Filter files based on selected extensions."""
+        selected = [ext for ext, var in self.filter_vars.items() if var.get()]
+        if not selected:
             return self.files
 
-        # Support glob-like patterns
-        if pattern.startswith("*."):
-            ext = pattern[1:].lower()  # e.g., ".txt"
-            return [f for f in self.files if f.suffix.lower() == ext]
-        elif "*" in pattern:
-            import fnmatch
-            return [f for f in self.files if fnmatch.fnmatch(f.name.lower(), pattern.lower())]
-        else:
-            # Simple substring match
-            return [f for f in self.files if pattern.lower() in f.name.lower()]
+        return [f for f in self.files if f.suffix.lower() in selected]
 
     def _on_tree_click(self, event):
         """Handle clicks on treeview for checkbox toggle."""
@@ -519,7 +667,7 @@ class App(tk.Tk):
             return True
         if self.number_start_var.get() != 1:
             return True
-        if self.filter_var.get():
+        if any(var.get() for var in self.filter_vars.values()):
             return True
         return False
 
@@ -545,7 +693,7 @@ class App(tk.Tk):
         self.use_numbering_var.set(False)
         self.number_pattern_var.set("file_{:02d}")
         self.number_start_var.set(1)
-        self.filter_var.set("")
+        self._on_filter_clear()
 
         # Refresh preview
         self._update_preview()
