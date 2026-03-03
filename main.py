@@ -69,6 +69,9 @@ class App(tk.Tk):
         self.btn_apply = ttk.Button(toolbar, text="Apply", command=self._on_apply)
         self.btn_apply.pack(side=tk.LEFT, padx=2)
 
+        self.btn_clear = ttk.Button(toolbar, text="Clear", command=self._on_clear)
+        self.btn_clear.pack(side=tk.LEFT, padx=2)
+
     def _create_filter_bar(self):
         """Create the file type filter bar."""
         filter_frame = ttk.Frame(self)
@@ -489,6 +492,63 @@ class App(tk.Tk):
         """Update undo/redo button enabled states."""
         self.btn_undo.config(state=tk.NORMAL if self.history.can_undo() else tk.DISABLED)
         self.btn_redo.config(state=tk.NORMAL if self.history.can_redo() else tk.DISABLED)
+
+    def _has_edits(self) -> bool:
+        """Check if any rule inputs have non-default values."""
+        if self.prefix_add_var.get():
+            return True
+        if self.prefix_remove_var.get():
+            return True
+        if self.suffix_add_var.get():
+            return True
+        if self.suffix_remove_var.get():
+            return True
+        if self.case_var.get():
+            return True
+        if self.regex_find_var.get():
+            return True
+        if self.regex_replace_var.get():
+            return True
+        if self.folder_prefix_var.get():
+            return True
+        if self.folder_suffix_var.get():
+            return True
+        if self.use_numbering_var.get():
+            return True
+        if self.number_pattern_var.get() != "file_{:02d}":
+            return True
+        if self.number_start_var.get() != 1:
+            return True
+        if self.filter_var.get():
+            return True
+        return False
+
+    def _on_clear(self):
+        """Clear all rule inputs. Show confirmation if there are edits."""
+        if self._has_edits():
+            if not messagebox.askyesno(
+                "Clear Rules",
+                "You have unsaved rule inputs. Clear all?"
+            ):
+                return
+
+        # Clear all inputs
+        self.prefix_add_var.set("")
+        self.prefix_remove_var.set("")
+        self.suffix_add_var.set("")
+        self.suffix_remove_var.set("")
+        self.case_var.set("")
+        self.regex_find_var.set("")
+        self.regex_replace_var.set("")
+        self.folder_prefix_var.set(False)
+        self.folder_suffix_var.set(False)
+        self.use_numbering_var.set(False)
+        self.number_pattern_var.set("file_{:02d}")
+        self.number_start_var.set(1)
+        self.filter_var.set("")
+
+        # Refresh preview
+        self._update_preview()
 
 
 def main():
