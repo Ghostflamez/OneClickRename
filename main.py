@@ -39,6 +39,19 @@ class App(tk.Tk):
         # Configure treeview tag colors
         self.style.configure("Treeview", rowheight=25)
 
+        # Configure notebook tabs with clearer borders
+        self.style.configure(
+            "TNotebook.Tab",
+            padding=(12, 6),
+            font=("Segoe UI", 10, "bold")
+        )
+        self.style.map(
+            "TNotebook.Tab",
+            background=[("selected", "#ffffff"), ("!selected", "#e0e0e0")],
+            foreground=[("selected", "#000000"), ("!selected", "#444444")],
+            relief=[("selected", "solid"), ("!selected", "raised")]
+        )
+
         # State
         self.current_folder: Path | None = None
         self.files: list[Path] = []
@@ -401,9 +414,12 @@ class App(tk.Tk):
         ttk.Entry(row1, textvariable=self.regex_find_var, width=30).pack(side=tk.LEFT, padx=5)
 
         ttk.Label(row1, text="Replace:").pack(side=tk.LEFT, padx=5)
-        self.regex_replace_var = tk.StringVar()
-        self.regex_replace_var.trace_add("write", lambda *_: self._schedule_preview())
-        ttk.Entry(row1, textvariable=self.regex_replace_var, width=30).pack(side=tk.LEFT, padx=5)
+        self.regex_replace_text = tk.Text(row1, width=30, height=2, font=("Segoe UI", 10))
+        self.regex_replace_text.pack(side=tk.LEFT, padx=5)
+        self.regex_replace_text.bind("<KeyRelease>", lambda e: self._schedule_preview())
+
+        # Hint for newline
+        ttk.Label(row1, text="(supports \\n)", foreground="gray").pack(side=tk.LEFT, padx=5)
 
     def _create_action_bar(self):
         """Create the bottom action bar with Apply button."""
@@ -430,7 +446,7 @@ class App(tk.Tk):
             'suffix_remove': self.suffix_remove_var.get(),
             'case': self.case_var.get() or None,
             'regex_find': self.regex_find_var.get(),
-            'regex_replace': self.regex_replace_var.get(),
+            'regex_replace': self.regex_replace_text.get("1.0", tk.END).rstrip('\n'),
             'folder_prefix': self.folder_prefix_var.get(),
             'folder_suffix': self.folder_suffix_var.get(),
             'folder_name': self.current_folder.name if self.current_folder else '',
@@ -552,6 +568,16 @@ class App(tk.Tk):
         if not self.files:
             return
 
+        # Check if regex find is set but replace is empty (deletion)
+        regex_find = self.regex_find_var.get()
+        regex_replace = self.regex_replace_text.get("1.0", tk.END).rstrip('\n')
+        if regex_find and not regex_replace:
+            if not messagebox.askyesno(
+                "Confirm Regex Deletion",
+                f"Replace is empty. This will DELETE all text matching:\n\n{regex_find}\n\nContinue?"
+            ):
+                return
+
         # Get files to rename
         items = self.tree.get_children()
         files_to_rename = []
@@ -661,7 +687,7 @@ class App(tk.Tk):
             return True
         if self.regex_find_var.get():
             return True
-        if self.regex_replace_var.get():
+        if self.regex_replace_text.get("1.0", tk.END).strip():
             return True
         if self.folder_prefix_var.get():
             return True
@@ -693,7 +719,7 @@ class App(tk.Tk):
         self.suffix_remove_var.set("")
         self.case_var.set("")
         self.regex_find_var.set("")
-        self.regex_replace_var.set("")
+        self.regex_replace_text.delete("1.0", tk.END)
         self.folder_prefix_var.set(False)
         self.folder_suffix_var.set(False)
         self.use_numbering_var.set(False)
