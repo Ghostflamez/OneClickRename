@@ -2,6 +2,12 @@
 
 A lightweight Windows 10/11 desktop GUI app for batch renaming files using regex patterns.
 
+## Download
+
+**Latest Release: v1.0.0**
+
+- [OneClickRename.exe](dist/OneClickRename.exe) (11 MB) - Standalone executable, no installation required
+
 ## Features
 
 ### Rename Rules
@@ -43,12 +49,20 @@ A lightweight Windows 10/11 desktop GUI app for batch renaming files using regex
 
 ## Requirements
 
-- Python 3.10+
+### For Users
 - Windows 10/11
+- No installation required (portable executable)
+
+### For Developers
+- Python 3.10+
 - No third-party runtime dependencies (stdlib only)
 
 ## Usage
 
+### Run Executable
+Double-click `OneClickRename.exe` to launch.
+
+### Run from Source
 ```bash
 python main.py
 ```
@@ -57,7 +71,7 @@ python main.py
 
 ```bash
 pip install pyinstaller
-pyinstaller --onefile --windowed main.py
+pyinstaller --onefile --windowed --name "OneClickRename" main.py
 ```
 
 The `.exe` will be created in the `dist/` folder.
@@ -69,9 +83,45 @@ OneClickRename/
 ├── main.py          # Entry point + UI (tkinter + ttk)
 ├── engine.py        # Rename logic (pure functions)
 ├── history.py       # Undo/redo stack (Command Pattern)
-└── requirements.txt # Dependencies
+├── requirements.txt # Dependencies
+└── dist/
+    └── OneClickRename.exe  # Standalone executable
 ```
+
+## Changelog
+
+### v1.0.0 (2025-03-03)
+
+**Initial Release**
+
+- Core rename rules: Prefix/Suffix, Case conversion, Numbering, Regex
+- Live preview with color-coded feedback (green=changed, red=invalid)
+- Undo/Redo support with 50-operation history
+- File type filter with categorized dropdown menu
+- Clear button to reset all inputs
+- DPI-aware UI with Windows Vista theme
+- Single-file portable executable (no installation required)
 
 ## License
 
-MIT
+MIT License
+
+Copyright (c) 2025 OneClickRename
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
