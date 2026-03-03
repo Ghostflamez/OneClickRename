@@ -548,16 +548,20 @@ class App(tk.Tk):
         self._update_button_states()
 
     def _on_apply(self):
-        """Apply rename operations to selected/all files."""
+        """Apply rename operations to checked files (or all if none checked)."""
         if not self.files:
             return
 
-        # Get files to rename (checked or all visible)
+        # Get files to rename
         items = self.tree.get_children()
         files_to_rename = []
         invalid_names = []
 
-        for item in items:
+        # Determine which items to process: checked items or all if none checked
+        has_checked = bool(self.checked_items)
+        items_to_process = [item for item in items if item in self.checked_items] if has_checked else items
+
+        for item in items_to_process:
             values = self.tree.item(item, "values")
             old_name, new_name = values[1], values[2]
 
@@ -590,10 +594,10 @@ class App(tk.Tk):
             return
 
         # Confirm
-        if not messagebox.askyesno(
-            "Confirm Rename",
-            f"Rename {len(files_to_rename)} file(s)?"
-        ):
+        msg = f"Rename {len(files_to_rename)} file(s)?"
+        if has_checked:
+            msg = f"Rename {len(files_to_rename)} checked file(s)?"
+        if not messagebox.askyesno("Confirm Rename", msg):
             return
 
         # Perform renames
