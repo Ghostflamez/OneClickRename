@@ -4,7 +4,7 @@ A lightweight Windows 10/11 desktop GUI app for batch renaming files using regex
 
 ## Download
 
-**Latest Release: v1.0.0**
+**Latest Release: v1.0.1**
 
 - [OneClickRename.exe](dist/OneClickRename.exe) (11 MB) - Standalone executable, no installation required
 
@@ -89,6 +89,13 @@ OneClickRename/
 ```
 
 ## Changelog
+
+### v1.0.1 (2025-03-03)
+
+**Bug Fix**
+
+- Fix checkbox selection: only rename checked files when checkboxes are used
+- Fall back to renaming all files if none are checked
 
 ### v1.0.0 (2025-03-03)
 

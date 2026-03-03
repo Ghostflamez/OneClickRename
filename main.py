@@ -10,7 +10,7 @@ from pathlib import Path
 import engine
 import history
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 # DPI awareness for Windows 10/11
 try:
